@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Trophy, Medal, Target, TrendingUp, Plus, X } from "lucide-react";
 
 interface Deal {
@@ -15,6 +15,7 @@ interface Deal {
 const CSOlympicsDashboard = () => {
   const [deals, setDeals] = useState<Deal[]>([]);
   const [showAddDeal, setShowAddDeal] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [newDeal, setNewDeal] = useState({
     csm: "",
     customer: "",
@@ -22,6 +23,22 @@ const CSOlympicsDashboard = () => {
     medal: "",
     date: new Date().toISOString().split("T")[0],
   });
+
+  useEffect(() => {
+    fetchDeals();
+  }, []);
+
+  const fetchDeals = async () => {
+    try {
+      const response = await fetch("/api/deals");
+      const data = await response.json();
+      setDeals(data);
+    } catch (error) {
+      console.error("Failed to fetch deals:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const teams = {
     red: [
@@ -127,22 +144,37 @@ const CSOlympicsDashboard = () => {
   const totalDeals = deals.length;
   const progressPercent = (totalDeals / 60) * 100;
 
-  const handleAddDeal = () => {
+  const handleAddDeal = async () => {
     if (newDeal.csm && newDeal.customer && newDeal.type && newDeal.medal) {
-      setDeals([...deals, { ...newDeal, id: Date.now() }]);
-      setNewDeal({
-        csm: "",
-        customer: "",
-        type: "",
-        medal: "",
-        date: new Date().toISOString().split("T")[0],
-      });
-      setShowAddDeal(false);
+      const deal = { ...newDeal, id: Date.now() };
+      try {
+        await fetch("/api/deals", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(deal),
+        });
+        setDeals([...deals, deal]);
+        setNewDeal({
+          csm: "",
+          customer: "",
+          type: "",
+          medal: "",
+          date: new Date().toISOString().split("T")[0],
+        });
+        setShowAddDeal(false);
+      } catch (error) {
+        console.error("Failed to add deal:", error);
+      }
     }
   };
 
-  const handleDeleteDeal = (id: number) => {
-    setDeals(deals.filter((deal) => deal.id !== id));
+  const handleDeleteDeal = async (id: number) => {
+    try {
+      await fetch(`/api/deals/${id}`, { method: "DELETE" });
+      setDeals(deals.filter((deal) => deal.id !== id));
+    } catch (error) {
+      console.error("Failed to delete deal:", error);
+    }
   };
 
   const RocketLogo = () => (
