@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Trophy, Medal, Target, TrendingUp, Plus, X } from "lucide-react";
+import { Trophy, Medal, Target, TrendingUp, Plus, X, Download } from "lucide-react";
 
 interface Deal {
   id: number;
@@ -175,6 +175,22 @@ const CSOlympicsDashboard = () => {
     } catch (error) {
       console.error("Failed to delete deal:", error);
     }
+  };
+
+  const handleExport = () => {
+    const headers = ["Date", "CSM", "Customer", "Type", "Medal"];
+    const rows = deals.map((d) =>
+      [d.date, d.csm, d.customer, d.type, d.medal].join(",")
+    );
+    const csv = [headers.join(","), ...rows].join("\n");
+
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `cs-olympics-${new Date().toISOString().split("T")[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   const RocketLogo = () => (
@@ -361,9 +377,18 @@ const CSOlympicsDashboard = () => {
 
         {/* Recent Deals */}
         <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl p-6 border border-purple-500/20 shadow-2xl shadow-purple-500/10">
-          <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
-            <TrendingUp className="w-6 h-6 text-purple-400" /> Recent Deals
-          </h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-2xl font-bold flex items-center gap-2">
+              <TrendingUp className="w-6 h-6 text-purple-400" /> Recent Deals
+            </h2>
+            <button
+              onClick={handleExport}
+              disabled={deals.length === 0}
+              className="bg-gray-700 hover:bg-gray-600 border border-purple-500/30 px-4 py-2 rounded-xl font-semibold flex items-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Download className="w-4 h-4" /> Export CSV
+            </button>
+          </div>
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
