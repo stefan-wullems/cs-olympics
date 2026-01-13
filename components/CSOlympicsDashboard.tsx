@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Trophy, Medal, Target, TrendingUp, Plus, X, Download } from "lucide-react";
+import { useSession, signIn, signOut } from "next-auth/react";
+import { Trophy, Medal, Target, TrendingUp, Plus, X, Download, LogOut } from "lucide-react";
+import { DeleteConfirmationModal } from "./DeleteConfirmationModal";
 
 interface Deal {
   id: number;
@@ -13,9 +15,15 @@ interface Deal {
 }
 
 const CSOlympicsDashboard = () => {
+  const { data: session, status } = useSession();
   const [deals, setDeals] = useState<Deal[]>([]);
   const [showAddDeal, setShowAddDeal] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [password, setPassword] = useState("");
+  const [loginError, setLoginError] = useState("");
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [dealToDelete, setDealToDelete] = useState<Deal | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [newDeal, setNewDeal] = useState({
     csm: "",
     customer: "",
@@ -24,19 +32,48 @@ const CSOlympicsDashboard = () => {
     date: new Date().toISOString().split("T")[0],
   });
 
+  const isAdmin = session?.user?.role === "admin";
+
   useEffect(() => {
-    fetchDeals();
-  }, []);
+    if (status === "authenticated") {
+      fetchDeals();
+    } else if (status === "unauthenticated") {
+      setIsLoading(false);
+    }
+  }, [status]);
 
   const fetchDeals = async () => {
     try {
       const response = await fetch("/api/deals");
-      const data = await response.json();
-      setDeals(data);
+      if (response.ok) {
+        const data = await response.json();
+        setDeals(data);
+      }
     } catch (error) {
       console.error("Failed to fetch deals:", error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoggingIn(true);
+    setLoginError("");
+
+    try {
+      const result = await signIn("credentials", {
+        password,
+        redirect: false,
+      });
+
+      if (result?.error) {
+        setLoginError("Invalid password");
+      }
+    } catch {
+      setLoginError("Login failed");
+    } finally {
+      setIsLoggingIn(false);
     }
   };
 
@@ -146,34 +183,49 @@ const CSOlympicsDashboard = () => {
 
   const handleAddDeal = async () => {
     if (newDeal.csm && newDeal.customer && newDeal.type && newDeal.medal) {
-      const deal = { ...newDeal, id: Date.now() };
       try {
-        await fetch("/api/deals", {
+        const response = await fetch("/api/deals", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(deal),
+          body: JSON.stringify(newDeal),
         });
-        setDeals([...deals, deal]);
-        setNewDeal({
-          csm: "",
-          customer: "",
-          type: "",
-          medal: "",
-          date: new Date().toISOString().split("T")[0],
-        });
-        setShowAddDeal(false);
+
+        if (response.ok) {
+          const createdDeal = await response.json();
+          setDeals([...deals, createdDeal]);
+          setNewDeal({
+            csm: "",
+            customer: "",
+            type: "",
+            medal: "",
+            date: new Date().toISOString().split("T")[0],
+          });
+          setShowAddDeal(false);
+        } else {
+          const error = await response.json();
+          console.error("Failed to add deal:", error);
+          alert("Failed to add deal: " + (error.error || "Unknown error"));
+        }
       } catch (error) {
         console.error("Failed to add deal:", error);
       }
     }
   };
 
-  const handleDeleteDeal = async (id: number) => {
+  const handleDeleteDeal = async () => {
+    if (!dealToDelete) return;
+
+    setIsDeleting(true);
     try {
-      await fetch(`/api/deals/${id}`, { method: "DELETE" });
-      setDeals(deals.filter((deal) => deal.id !== id));
+      const response = await fetch(`/api/deals/${dealToDelete.id}`, { method: "DELETE" });
+      if (response.ok) {
+        setDeals(deals.filter((deal) => deal.id !== dealToDelete.id));
+      }
     } catch (error) {
       console.error("Failed to delete deal:", error);
+    } finally {
+      setIsDeleting(false);
+      setDealToDelete(null);
     }
   };
 
@@ -212,6 +264,62 @@ const CSOlympicsDashboard = () => {
     </svg>
   );
 
+  // Loading state
+  if (status === "loading" || (status === "authenticated" && isLoading)) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-900 text-white flex items-center justify-center">
+        <div className="text-center">
+          <RocketLogo />
+          <p className="mt-4 text-gray-400">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Login form
+  if (status === "unauthenticated") {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-900 text-white flex items-center justify-center p-6">
+        <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl p-8 max-w-md w-full border border-purple-500/20 shadow-2xl shadow-purple-500/10">
+          <div className="text-center mb-8">
+            <div className="flex justify-center mb-4">
+              <RocketLogo />
+            </div>
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-400 via-purple-500 to-purple-600 bg-clip-text text-transparent">
+              CS SALES OLYMPICS
+            </h1>
+            <p className="text-gray-400 mt-2">Enter password to continue</p>
+          </div>
+
+          <form onSubmit={handleLogin} className="space-y-4">
+            <div>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Password"
+                className="w-full bg-gray-700 border border-gray-600 rounded-xl px-4 py-3 text-white focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all"
+                autoFocus
+              />
+            </div>
+
+            {loginError && (
+              <p className="text-red-400 text-sm text-center">{loginError}</p>
+            )}
+
+            <button
+              type="submit"
+              disabled={isLoggingIn || !password}
+              className="w-full bg-gradient-to-r from-purple-500 to-purple-700 hover:from-purple-600 hover:to-purple-800 px-6 py-3 rounded-xl font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isLoggingIn ? "Logging in..." : "Login"}
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-900 text-white p-6">
       {/* Animated stars background */}
@@ -239,7 +347,21 @@ const CSOlympicsDashboard = () => {
       </div>
 
       <div className="max-w-7xl mx-auto relative z-10">
-        {/* Header with Logo */}
+        {/* Header with Logo and Logout */}
+        <div className="flex justify-end mb-4">
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-gray-400">
+              {isAdmin ? "Admin" : "Viewer"}
+            </span>
+            <button
+              onClick={() => signOut()}
+              className="text-gray-400 hover:text-white transition-all flex items-center gap-1 text-sm"
+            >
+              <LogOut className="w-4 h-4" /> Logout
+            </button>
+          </div>
+        </div>
+
         <div className="text-center mb-8">
           <div className="flex items-center justify-center gap-4 mb-3">
             <RocketLogo />
@@ -271,12 +393,14 @@ const CSOlympicsDashboard = () => {
                 <p className="text-gray-400 text-sm">Team Goal Progress</p>
               </div>
             </div>
-            <button
-              onClick={() => setShowAddDeal(true)}
-              className="bg-gradient-to-r from-purple-500 to-purple-700 hover:from-purple-600 hover:to-purple-800 px-6 py-3 rounded-xl font-semibold flex items-center gap-2 transition-all transform hover:scale-105 shadow-lg shadow-purple-500/30"
-            >
-              <Plus className="w-5 h-5" /> Log Deal
-            </button>
+            {isAdmin && (
+              <button
+                onClick={() => setShowAddDeal(true)}
+                className="bg-gradient-to-r from-purple-500 to-purple-700 hover:from-purple-600 hover:to-purple-800 px-6 py-3 rounded-xl font-semibold flex items-center gap-2 transition-all transform hover:scale-105 shadow-lg shadow-purple-500/30"
+              >
+                <Plus className="w-5 h-5" /> Log Deal
+              </button>
+            )}
           </div>
           <div className="relative w-full bg-gray-800 rounded-full h-8 overflow-hidden shadow-inner">
             <div
@@ -367,7 +491,7 @@ const CSOlympicsDashboard = () => {
                     <RocketLogo />
                   </div>
                   <p className="text-gray-400">
-                    No deals logged yet. Launch your first mission! 🚀
+                    No deals logged yet. Launch your first mission!
                   </p>
                 </div>
               )}
@@ -400,7 +524,7 @@ const CSOlympicsDashboard = () => {
                   </th>
                   <th className="pb-3 px-3 text-gray-400 font-semibold">Type</th>
                   <th className="pb-3 px-3 text-gray-400 font-semibold">Medal</th>
-                  <th className="pb-3 px-3"></th>
+                  {isAdmin && <th className="pb-3 px-3"></th>}
                 </tr>
               </thead>
               <tbody>
@@ -421,24 +545,26 @@ const CSOlympicsDashboard = () => {
                         {deal.type}
                       </td>
                       <td className="py-3 px-3 text-xl">{deal.medal}</td>
-                      <td className="py-3 px-3">
-                        <button
-                          onClick={() => handleDeleteDeal(deal.id)}
-                          className="text-red-400 hover:text-red-300 transition-all"
-                        >
-                          <X className="w-4 h-4" />
-                        </button>
-                      </td>
+                      {isAdmin && (
+                        <td className="py-3 px-3">
+                          <button
+                            onClick={() => setDealToDelete(deal)}
+                            className="text-red-400 hover:text-red-300 transition-all"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </td>
+                      )}
                     </tr>
                   ))}
                 {deals.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="py-12 text-center">
+                    <td colSpan={isAdmin ? 6 : 5} className="py-12 text-center">
                       <div className="w-16 h-16 mx-auto mb-4 opacity-30">
                         <RocketLogo />
                       </div>
                       <p className="text-gray-400 text-lg">
-                        Ready for liftoff? Start logging deals! 🚀
+                        Ready for liftoff? Start logging deals!
                       </p>
                     </td>
                   </tr>
@@ -601,6 +727,15 @@ const CSOlympicsDashboard = () => {
           </div>
         </div>
       )}
+
+      {/* Delete Confirmation Modal */}
+      <DeleteConfirmationModal
+        isOpen={!!dealToDelete}
+        deal={dealToDelete}
+        onConfirm={handleDeleteDeal}
+        onCancel={() => setDealToDelete(null)}
+        isDeleting={isDeleting}
+      />
     </div>
   );
 };
