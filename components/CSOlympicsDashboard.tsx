@@ -168,7 +168,7 @@ const CSOlympicsDashboard = () => {
     },
     {
       name: "Blue",
-      color: "from-purple-500 to-purple-600",
+      color: "from-blue-500 to-blue-600",
       points: calculateTeamPoints("blue"),
     },
     {
