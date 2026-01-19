@@ -18,18 +18,26 @@ const allDealTypes = [
   "Starter → Pro", "Pro → Enterprise", "Additional Domain", "Referral", "Early Renewal + Upsell", "Combo Deal (3+ items)",
 ];
 
-const validMedals = ["🥉 Bronze", "🥈 Silver", "🥇 Gold"] as const;
+// Non-deal types that give points but don't count toward the 60-deal goal
+const nonDealTypes = ["5 Star Review", "Success Case"] as const;
+
+const allTypes = [...allDealTypes, ...nonDealTypes];
+
+const validMedals = ["🥉 Bronze", "🥈 Silver", "🥇 Gold", "⭐ Star", "🌟 Super Star"] as const;
 
 export const DealInputSchema = z.object({
   csm: z.string().refine((csm) => allCSMs.includes(csm), {
     message: "Invalid CSM name",
   }),
   customer: z.string().min(1, "Customer name is required").max(255, "Customer name too long"),
-  type: z.string().refine((type) => allDealTypes.includes(type), {
+  type: z.string().refine((type) => allTypes.includes(type), {
     message: "Invalid deal type",
   }),
-  medal: z.enum(validMedals, { message: "Invalid medal type" }),
+  medal: z.string().refine((medal) => validMedals.includes(medal as typeof validMedals[number]), {
+    message: "Invalid medal type",
+  }),
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Invalid date format (YYYY-MM-DD)"),
+  isDeal: z.boolean().optional(),
 });
 
 export type DealInput = z.infer<typeof DealInputSchema>;

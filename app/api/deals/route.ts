@@ -10,6 +10,7 @@ interface Deal {
   type: string;
   medal: string;
   date: string;
+  isDeal?: boolean;
 }
 
 const redis = Redis.fromEnv();

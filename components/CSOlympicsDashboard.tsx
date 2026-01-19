@@ -12,6 +12,7 @@ interface Deal {
   type: string;
   medal: string;
   date: string;
+  isDeal?: boolean;
 }
 
 const CSOlympicsDashboard = () => {
@@ -28,7 +29,6 @@ const CSOlympicsDashboard = () => {
     csm: "",
     customer: "",
     type: "",
-    medal: "",
     date: new Date().toISOString().split("T")[0],
   });
 
@@ -112,6 +112,8 @@ const CSOlympicsDashboard = () => {
     "🥉 Bronze": 1,
     "🥈 Silver": 2,
     "🥇 Gold": 3,
+    "⭐ Star": 1,
+    "🌟 Super Star": 2,
   };
 
   const dealTypes = {
@@ -137,6 +139,21 @@ const CSOlympicsDashboard = () => {
       "Early Renewal + Upsell",
       "Combo Deal (3+ items)",
     ],
+    star: ["5 Star Review"],
+    superStar: ["Success Case"],
+  };
+
+  const getMedalForType = (type: string): string => {
+    if (dealTypes.bronze.includes(type)) return "🥉 Bronze";
+    if (dealTypes.silver.includes(type)) return "🥈 Silver";
+    if (dealTypes.gold.includes(type)) return "🥇 Gold";
+    if (dealTypes.star.includes(type)) return "⭐ Star";
+    if (dealTypes.superStar.includes(type)) return "🌟 Super Star";
+    return "";
+  };
+
+  const isStarAchievement = (type: string): boolean => {
+    return dealTypes.star.includes(type) || dealTypes.superStar.includes(type);
   };
 
   const getTeamForCSM = (csm: string): string | null => {
@@ -178,16 +195,17 @@ const CSOlympicsDashboard = () => {
     },
   ].sort((a, b) => b.points - a.points);
 
-  const totalDeals = deals.length;
+  const totalDeals = deals.filter((deal) => !isStarAchievement(deal.type)).length;
   const progressPercent = (totalDeals / 60) * 100;
 
   const handleAddDeal = async () => {
-    if (newDeal.csm && newDeal.customer && newDeal.type && newDeal.medal) {
+    const medal = getMedalForType(newDeal.type);
+    if (newDeal.csm && newDeal.customer && newDeal.type && medal) {
       try {
         const response = await fetch("/api/deals", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(newDeal),
+          body: JSON.stringify({ ...newDeal, medal }),
         });
 
         if (response.ok) {
@@ -197,7 +215,6 @@ const CSOlympicsDashboard = () => {
             csm: "",
             customer: "",
             type: "",
-            medal: "",
             date: new Date().toISOString().split("T")[0],
           });
           setShowAddDeal(false);
@@ -646,24 +663,7 @@ const CSOlympicsDashboard = () => {
               </div>
               <div>
                 <label className="block text-sm font-semibold mb-2 text-gray-300">
-                  Medal Type
-                </label>
-                <select
-                  value={newDeal.medal}
-                  onChange={(e) =>
-                    setNewDeal({ ...newDeal, medal: e.target.value })
-                  }
-                  className="w-full bg-gray-700 border border-gray-600 rounded-xl px-4 py-2.5 text-white focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all"
-                >
-                  <option value="">Select medal</option>
-                  <option value="🥉 Bronze">🥉 Bronze (1 point)</option>
-                  <option value="🥈 Silver">🥈 Silver (2 points)</option>
-                  <option value="🥇 Gold">🥇 Gold (3 points)</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-semibold mb-2 text-gray-300">
-                  Deal Type
+                  Achievement
                 </label>
                 <select
                   value={newDeal.type}
@@ -672,7 +672,7 @@ const CSOlympicsDashboard = () => {
                   }
                   className="w-full bg-gray-700 border border-gray-600 rounded-xl px-4 py-2.5 text-white focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all"
                 >
-                  <option value="">Select deal type</option>
+                  <option value="">Select achievement</option>
                   <optgroup label="🥉 Bronze">
                     {dealTypes.bronze.map((type) => (
                       <option key={type} value={type}>
@@ -689,6 +689,13 @@ const CSOlympicsDashboard = () => {
                   </optgroup>
                   <optgroup label="🥇 Gold">
                     {dealTypes.gold.map((type) => (
+                      <option key={type} value={type}>
+                        {type}
+                      </option>
+                    ))}
+                  </optgroup>
+                  <optgroup label="⭐ Stars">
+                    {[...dealTypes.star, ...dealTypes.superStar].map((type) => (
                       <option key={type} value={type}>
                         {type}
                       </option>
