@@ -30,6 +30,7 @@ export const DealInputSchema = z.object({
     message: "Invalid CSM name",
   }),
   customer: z.string().min(1, "Customer name is required").max(255, "Customer name too long"),
+  notes: z.string().max(500, "Notes too long").optional(),
   type: z.string().refine((type) => allTypes.includes(type), {
     message: "Invalid deal type",
   }),

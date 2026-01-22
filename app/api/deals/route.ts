@@ -7,6 +7,7 @@ interface Deal {
   id: number;
   csm: string;
   customer: string;
+  notes?: string;
   type: string;
   medal: string;
   date: string;

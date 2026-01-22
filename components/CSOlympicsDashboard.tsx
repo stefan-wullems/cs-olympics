@@ -2,13 +2,14 @@
 
 import { useState, useEffect } from "react";
 import { useSession, signIn, signOut } from "next-auth/react";
-import { Trophy, Medal, Target, TrendingUp, Plus, X, Download, LogOut } from "lucide-react";
+import { Trophy, Medal, Target, TrendingUp, Plus, X, Download, LogOut, MoreVertical } from "lucide-react";
 import { DeleteConfirmationModal } from "./DeleteConfirmationModal";
 
 interface Deal {
   id: number;
   csm: string;
   customer: string;
+  notes?: string;
   type: string;
   medal: string;
   date: string;
@@ -25,9 +26,12 @@ const CSOlympicsDashboard = () => {
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [dealToDelete, setDealToDelete] = useState<Deal | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [dealToEdit, setDealToEdit] = useState<Deal | null>(null);
+  const [openDropdownId, setOpenDropdownId] = useState<number | null>(null);
   const [newDeal, setNewDeal] = useState({
     csm: "",
     customer: "",
+    notes: "",
     type: "",
     date: new Date().toISOString().split("T")[0],
   });
@@ -222,6 +226,7 @@ const CSOlympicsDashboard = () => {
           setNewDeal({
             csm: "",
             customer: "",
+            notes: "",
             type: "",
             date: new Date().toISOString().split("T")[0],
           });
@@ -233,6 +238,32 @@ const CSOlympicsDashboard = () => {
         }
       } catch (error) {
         console.error("Failed to add deal:", error);
+      }
+    }
+  };
+
+  const handleEditDeal = async () => {
+    if (!dealToEdit) return;
+    const medal = getMedalForType(dealToEdit.type);
+    if (dealToEdit.csm && dealToEdit.customer && dealToEdit.type && medal) {
+      try {
+        const response = await fetch(`/api/deals/${dealToEdit.id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ...dealToEdit, medal }),
+        });
+
+        if (response.ok) {
+          const updatedDeal = await response.json();
+          setDeals(deals.map((d) => (d.id === updatedDeal.id ? updatedDeal : d)));
+          setDealToEdit(null);
+        } else {
+          const error = await response.json();
+          console.error("Failed to update deal:", error);
+          alert("Failed to update deal: " + (error.error || "Unknown error"));
+        }
+      } catch (error) {
+        console.error("Failed to update deal:", error);
       }
     }
   };
@@ -255,9 +286,9 @@ const CSOlympicsDashboard = () => {
   };
 
   const handleExport = () => {
-    const headers = ["Date", "CSM", "Customer", "Type", "Medal"];
+    const headers = ["Date", "CSM", "Customer", "Notes", "Type", "Medal"];
     const rows = deals.map((d) =>
-      [d.date, d.csm, d.customer, d.type, d.medal].join(",")
+      [d.date, d.csm, d.customer, d.notes || "", d.type, d.medal].join(",")
     );
     const csv = [headers.join(","), ...rows].join("\n");
 
@@ -558,9 +589,8 @@ const CSOlympicsDashboard = () => {
                 <tr className="text-left border-b border-gray-700">
                   <th className="pb-3 px-3 text-gray-400 font-semibold">Date</th>
                   <th className="pb-3 px-3 text-gray-400 font-semibold">CSM</th>
-                  <th className="pb-3 px-3 text-gray-400 font-semibold">
-                    Customer
-                  </th>
+                  <th className="pb-3 px-3 text-gray-400 font-semibold">Customer</th>
+                  <th className="pb-3 px-3 text-gray-400 font-semibold">Notes</th>
                   <th className="pb-3 px-3 text-gray-400 font-semibold">Type</th>
                   <th className="pb-3 px-3 text-gray-400 font-semibold">Medal</th>
                   {isAdmin && <th className="pb-3 px-3"></th>}
@@ -589,25 +619,48 @@ const CSOlympicsDashboard = () => {
                         </span>
                       </td>
                       <td className="py-3 px-3">{deal.customer}</td>
+                      <td className="py-3 px-3 text-sm text-gray-400">{deal.notes || "-"}</td>
                       <td className="py-3 px-3 text-sm text-gray-300">
                         {deal.type}
                       </td>
                       <td className="py-3 px-3 text-xl">{deal.medal}</td>
                       {isAdmin && (
-                        <td className="py-3 px-3">
+                        <td className="py-3 px-3 relative">
                           <button
-                            onClick={() => setDealToDelete(deal)}
-                            className="text-red-400 hover:text-red-300 transition-all"
+                            onClick={() => setOpenDropdownId(openDropdownId === deal.id ? null : deal.id)}
+                            className="text-gray-400 hover:text-white transition-all p-1 rounded hover:bg-gray-700"
                           >
-                            <X className="w-4 h-4" />
+                            <MoreVertical className="w-4 h-4" />
                           </button>
+                          {openDropdownId === deal.id && (
+                            <div className="absolute right-0 mt-1 bg-gray-800 border border-gray-700 rounded-lg shadow-xl z-10 min-w-[120px]">
+                              <button
+                                onClick={() => {
+                                  setDealToEdit(deal);
+                                  setOpenDropdownId(null);
+                                }}
+                                className="w-full text-left px-4 py-2 text-sm hover:bg-gray-700 transition-all rounded-t-lg"
+                              >
+                                Edit
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setDealToDelete(deal);
+                                  setOpenDropdownId(null);
+                                }}
+                                className="w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-gray-700 transition-all rounded-b-lg"
+                              >
+                                Delete
+                              </button>
+                            </div>
+                          )}
                         </td>
                       )}
                     </tr>
                   ))}
                 {deals.length === 0 && (
                   <tr>
-                    <td colSpan={isAdmin ? 6 : 5} className="py-12 text-center">
+                    <td colSpan={isAdmin ? 7 : 6} className="py-12 text-center">
                       <div className="w-16 h-16 mx-auto mb-4 opacity-30">
                         <RocketLogo />
                       </div>
@@ -694,6 +747,20 @@ const CSOlympicsDashboard = () => {
               </div>
               <div>
                 <label className="block text-sm font-semibold mb-2 text-gray-300">
+                  Notes (optional)
+                </label>
+                <input
+                  type="text"
+                  value={newDeal.notes}
+                  onChange={(e) =>
+                    setNewDeal({ ...newDeal, notes: e.target.value })
+                  }
+                  className="w-full bg-gray-700 border border-gray-600 rounded-xl px-4 py-2.5 text-white focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all"
+                  placeholder="Enter notes"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold mb-2 text-gray-300">
                   Achievement
                 </label>
                 <select
@@ -756,6 +823,145 @@ const CSOlympicsDashboard = () => {
                 </button>
                 <button
                   onClick={() => setShowAddDeal(false)}
+                  className="px-6 py-3 bg-gray-700 hover:bg-gray-600 border border-gray-600 rounded-xl font-semibold transition-all"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Deal Modal */}
+      {dealToEdit && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl p-6 max-w-md w-full border border-purple-500/30 shadow-2xl shadow-purple-500/20">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-2xl font-bold flex items-center gap-2">
+                Edit Deal
+              </h3>
+              <button
+                onClick={() => setDealToEdit(null)}
+                className="text-gray-400 hover:text-white transition-all"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-semibold mb-2 text-gray-300">
+                  CSM Name
+                </label>
+                <select
+                  value={dealToEdit.csm}
+                  onChange={(e) =>
+                    setDealToEdit({ ...dealToEdit, csm: e.target.value })
+                  }
+                  className="w-full bg-gray-700 border border-gray-600 rounded-xl px-4 py-2.5 text-white focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all"
+                >
+                  <option value="">Select CSM</option>
+                  {[...teams.red, ...teams.blue, ...teams.green]
+                    .sort()
+                    .map((csm) => (
+                      <option key={csm} value={csm}>
+                        {csm}
+                      </option>
+                    ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-semibold mb-2 text-gray-300">
+                  Customer Name
+                </label>
+                <input
+                  type="text"
+                  value={dealToEdit.customer}
+                  onChange={(e) =>
+                    setDealToEdit({ ...dealToEdit, customer: e.target.value })
+                  }
+                  className="w-full bg-gray-700 border border-gray-600 rounded-xl px-4 py-2.5 text-white focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all"
+                  placeholder="Enter customer name"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold mb-2 text-gray-300">
+                  Notes (optional)
+                </label>
+                <input
+                  type="text"
+                  value={dealToEdit.notes || ""}
+                  onChange={(e) =>
+                    setDealToEdit({ ...dealToEdit, notes: e.target.value })
+                  }
+                  className="w-full bg-gray-700 border border-gray-600 rounded-xl px-4 py-2.5 text-white focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all"
+                  placeholder="Enter notes"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold mb-2 text-gray-300">
+                  Achievement
+                </label>
+                <select
+                  value={dealToEdit.type}
+                  onChange={(e) =>
+                    setDealToEdit({ ...dealToEdit, type: e.target.value })
+                  }
+                  className="w-full bg-gray-700 border border-gray-600 rounded-xl px-4 py-2.5 text-white focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all"
+                >
+                  <option value="">Select achievement</option>
+                  <optgroup label="🥉 Bronze">
+                    {dealTypes.bronze.map((type) => (
+                      <option key={type} value={type}>
+                        {type}
+                      </option>
+                    ))}
+                  </optgroup>
+                  <optgroup label="🥈 Silver">
+                    {dealTypes.silver.map((type) => (
+                      <option key={type} value={type}>
+                        {type}
+                      </option>
+                    ))}
+                  </optgroup>
+                  <optgroup label="🥇 Gold">
+                    {dealTypes.gold.map((type) => (
+                      <option key={type} value={type}>
+                        {type}
+                      </option>
+                    ))}
+                  </optgroup>
+                  <optgroup label="🎖️ Stars">
+                    {[...dealTypes.star, ...dealTypes.superStar].map((type) => (
+                      <option key={type} value={type}>
+                        {type}
+                      </option>
+                    ))}
+                  </optgroup>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-semibold mb-2 text-gray-300">
+                  Date
+                </label>
+                <input
+                  type="date"
+                  value={dealToEdit.date}
+                  onChange={(e) =>
+                    setDealToEdit({ ...dealToEdit, date: e.target.value })
+                  }
+                  className="w-full bg-gray-700 border border-gray-600 rounded-xl px-4 py-2.5 text-white focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all"
+                />
+              </div>
+              <div className="flex gap-3 pt-4">
+                <button
+                  onClick={handleEditDeal}
+                  className="flex-1 bg-gradient-to-r from-purple-500 to-purple-700 hover:from-purple-600 hover:to-purple-800 px-6 py-3 rounded-xl font-semibold transition-all transform hover:scale-105 shadow-lg shadow-purple-500/30"
+                >
+                  Save Changes
+                </button>
+                <button
+                  onClick={() => setDealToEdit(null)}
                   className="px-6 py-3 bg-gray-700 hover:bg-gray-600 border border-gray-600 rounded-xl font-semibold transition-all"
                 >
                   Cancel
