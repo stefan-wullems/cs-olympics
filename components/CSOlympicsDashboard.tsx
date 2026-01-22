@@ -495,7 +495,14 @@ const CSOlympicsDashboard = () => {
                       <span className="text-lg font-bold text-gray-500 w-8">
                         #{index + 1}
                       </span>
-                      <span className="font-semibold">{csm}</span>
+                      <span className="font-semibold flex items-center gap-2">
+                        <span className={`w-2 h-2 rounded-full ${
+                          getTeamForCSM(csm) === 'red' ? 'bg-red-500' :
+                          getTeamForCSM(csm) === 'blue' ? 'bg-blue-500' :
+                          getTeamForCSM(csm) === 'green' ? 'bg-green-500' : 'bg-gray-500'
+                        }`} />
+                        {csm}
+                      </span>
                     </div>
                     <span className="text-xl font-bold bg-gradient-to-r from-purple-400 to-purple-600 bg-clip-text text-transparent">
                       {points}
@@ -556,7 +563,16 @@ const CSOlympicsDashboard = () => {
                       <td className="py-3 px-3 text-gray-400 text-sm">
                         {deal.date}
                       </td>
-                      <td className="py-3 px-3 font-semibold">{deal.csm}</td>
+                      <td className="py-3 px-3 font-semibold">
+                        <span className="flex items-center gap-2">
+                          <span className={`w-2 h-2 rounded-full ${
+                            getTeamForCSM(deal.csm) === 'red' ? 'bg-red-500' :
+                            getTeamForCSM(deal.csm) === 'blue' ? 'bg-blue-500' :
+                            getTeamForCSM(deal.csm) === 'green' ? 'bg-green-500' : 'bg-gray-500'
+                          }`} />
+                          {deal.csm}
+                        </span>
+                      </td>
                       <td className="py-3 px-3">{deal.customer}</td>
                       <td className="py-3 px-3 text-sm text-gray-300">
                         {deal.type}
