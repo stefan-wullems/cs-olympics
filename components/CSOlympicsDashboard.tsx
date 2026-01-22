@@ -112,7 +112,7 @@ const CSOlympicsDashboard = () => {
     "🥉 Bronze": 1,
     "🥈 Silver": 2,
     "🥇 Gold": 3,
-    "🏅 Star": 1,
+    "🎖️ Star": 1,
     "🏅 Star (2x)": 2,
   };
 
@@ -147,7 +147,7 @@ const CSOlympicsDashboard = () => {
     if (dealTypes.bronze.includes(type)) return "🥉 Bronze";
     if (dealTypes.silver.includes(type)) return "🥈 Silver";
     if (dealTypes.gold.includes(type)) return "🥇 Gold";
-    if (dealTypes.star.includes(type)) return "🏅 Star";
+    if (dealTypes.star.includes(type)) return "🎖️ Star";
     if (dealTypes.superStar.includes(type)) return "🏅 Star (2x)";
     return "";
   };
@@ -169,12 +169,20 @@ const CSOlympicsDashboard = () => {
       .reduce((sum, deal) => sum + (medalPoints[deal.medal] || 0), 0);
   };
 
-  const calculateIndividualPoints = () => {
-    const points: Record<string, number> = {};
+  const calculateIndividualStats = () => {
+    const stats: Record<string, { points: number; medals: Record<string, number> }> = {};
     deals.forEach((deal) => {
-      points[deal.csm] = (points[deal.csm] || 0) + (medalPoints[deal.medal] || 0);
+      if (!stats[deal.csm]) {
+        stats[deal.csm] = { points: 0, medals: {} };
+      }
+      stats[deal.csm].points += medalPoints[deal.medal] || 0;
+      stats[deal.csm].medals[deal.medal] = (stats[deal.csm].medals[deal.medal] || 0) + 1;
     });
-    return Object.entries(points).sort((a, b) => b[1] - a[1]);
+    return Object.entries(stats).sort((a, b) => b[1].points - a[1].points);
+  };
+
+  const calculateIndividualPoints = () => {
+    return calculateIndividualStats().map(([csm, { points }]) => [csm, points] as [string, number]);
   };
 
   const teamScores = [
@@ -484,9 +492,9 @@ const CSOlympicsDashboard = () => {
               <Medal className="w-6 h-6 text-purple-400" /> Top Performers
             </h2>
             <div className="space-y-2 max-h-80 overflow-y-auto">
-              {calculateIndividualPoints()
+              {calculateIndividualStats()
                 .slice(0, 10)
-                .map(([csm, points], index) => (
+                .map(([csm, { points, medals }], index) => (
                   <div
                     key={csm}
                     className="flex items-center justify-between p-3 bg-gray-800/50 rounded-xl border border-purple-500/10 hover:border-purple-500/30 transition-all"
@@ -503,13 +511,20 @@ const CSOlympicsDashboard = () => {
                         }`} />
                         {csm}
                       </span>
+                      <span className="text-sm text-gray-400 flex items-center gap-2">
+                        {medals["🥇 Gold"] && <span>{medals["🥇 Gold"]}🥇</span>}
+                        {medals["🥈 Silver"] && <span>{medals["🥈 Silver"]}🥈</span>}
+                        {medals["🥉 Bronze"] && <span>{medals["🥉 Bronze"]}🥉</span>}
+                        {medals["🏅 Star (2x)"] && <span>{medals["🏅 Star (2x)"]}🏅</span>}
+                        {medals["🎖️ Star"] && <span>{medals["🎖️ Star"]}🎖️</span>}
+                      </span>
                     </div>
                     <span className="text-xl font-bold bg-gradient-to-r from-purple-400 to-purple-600 bg-clip-text text-transparent">
                       {points}
                     </span>
                   </div>
                 ))}
-              {calculateIndividualPoints().length === 0 && (
+              {calculateIndividualStats().length === 0 && (
                 <div className="text-center py-12">
                   <div className="w-16 h-16 mx-auto mb-4 opacity-50">
                     <RocketLogo />
@@ -710,7 +725,7 @@ const CSOlympicsDashboard = () => {
                       </option>
                     ))}
                   </optgroup>
-                  <optgroup label="🏅 Stars">
+                  <optgroup label="🎖️ Stars">
                     {[...dealTypes.star, ...dealTypes.superStar].map((type) => (
                       <option key={type} value={type}>
                         {type}

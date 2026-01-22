@@ -23,7 +23,7 @@ const nonDealTypes = ["5 Star Review", "Success Case"] as const;
 
 const allTypes = [...allDealTypes, ...nonDealTypes];
 
-const validMedals = ["🥉 Bronze", "🥈 Silver", "🥇 Gold", "🏅 Star", "🏅 Star (2x)"] as const;
+const validMedals = ["🥉 Bronze", "🥈 Silver", "🥇 Gold", "🎖️ Star", "🏅 Star (2x)"] as const;
 
 export const DealInputSchema = z.object({
   csm: z.string().refine((csm) => allCSMs.includes(csm), {
