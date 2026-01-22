@@ -112,8 +112,8 @@ const CSOlympicsDashboard = () => {
     "🥉 Bronze": 1,
     "🥈 Silver": 2,
     "🥇 Gold": 3,
-    "⭐ Star": 1,
-    "🌟 Super Star": 2,
+    "🏅 Star": 1,
+    "🏅 Star (2x)": 2,
   };
 
   const dealTypes = {
@@ -147,8 +147,8 @@ const CSOlympicsDashboard = () => {
     if (dealTypes.bronze.includes(type)) return "🥉 Bronze";
     if (dealTypes.silver.includes(type)) return "🥈 Silver";
     if (dealTypes.gold.includes(type)) return "🥇 Gold";
-    if (dealTypes.star.includes(type)) return "⭐ Star";
-    if (dealTypes.superStar.includes(type)) return "🌟 Super Star";
+    if (dealTypes.star.includes(type)) return "🏅 Star";
+    if (dealTypes.superStar.includes(type)) return "🏅 Star (2x)";
     return "";
   };
 
@@ -710,7 +710,7 @@ const CSOlympicsDashboard = () => {
                       </option>
                     ))}
                   </optgroup>
-                  <optgroup label="⭐ Stars">
+                  <optgroup label="🏅 Stars">
                     {[...dealTypes.star, ...dealTypes.superStar].map((type) => (
                       <option key={type} value={type}>
                         {type}
