@@ -10,6 +10,7 @@ interface Deal {
   csm: string;
   customer: string;
   notes?: string;
+  dealValue?: number;
   type: string;
   medal: string;
   date: string;
@@ -32,6 +33,7 @@ const CSOlympicsDashboard = () => {
     csm: "",
     customer: "",
     notes: "",
+    dealValue: "",
     type: "",
     date: new Date().toISOString().split("T")[0],
   });
@@ -209,15 +211,21 @@ const CSOlympicsDashboard = () => {
 
   const totalDeals = deals.filter((deal) => !isStarAchievement(deal.type)).length;
   const progressPercent = (totalDeals / 60) * 100;
+  const totalDealValue = deals.reduce((sum, deal) => sum + (deal.dealValue || 0), 0);
 
   const handleAddDeal = async () => {
     const medal = getMedalForType(newDeal.type);
     if (newDeal.csm && newDeal.customer && newDeal.type && medal) {
       try {
+        const dealData = {
+          ...newDeal,
+          medal,
+          dealValue: newDeal.dealValue ? parseFloat(newDeal.dealValue) : undefined,
+        };
         const response = await fetch("/api/deals", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ ...newDeal, medal }),
+          body: JSON.stringify(dealData),
         });
 
         if (response.ok) {
@@ -227,6 +235,7 @@ const CSOlympicsDashboard = () => {
             csm: "",
             customer: "",
             notes: "",
+            dealValue: "",
             type: "",
             date: new Date().toISOString().split("T")[0],
           });
@@ -286,9 +295,9 @@ const CSOlympicsDashboard = () => {
   };
 
   const handleExport = () => {
-    const headers = ["Date", "CSM", "Customer", "Notes", "Type", "Medal"];
+    const headers = ["Date", "CSM", "Customer", "Notes", "Deal Value", "Type", "Medal"];
     const rows = deals.map((d) =>
-      [d.date, d.csm, d.customer, d.notes || "", d.type, d.medal].join(",")
+      [d.date, d.csm, d.customer, d.notes || "", d.dealValue || "", d.type, d.medal].join(",")
     );
     const csv = [headers.join(","), ...rows].join("\n");
 
@@ -440,13 +449,25 @@ const CSOlympicsDashboard = () => {
         {/* Goal Progress */}
         <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl p-6 mb-6 border border-purple-500/20 shadow-2xl shadow-purple-500/10">
           <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-3">
-              <div className="bg-gradient-to-br from-purple-600 to-purple-800 p-3 rounded-xl shadow-lg shadow-purple-500/30">
-                <Target className="w-8 h-8 text-white" />
+            <div className="flex items-center gap-6">
+              <div className="flex items-center gap-3">
+                <div className="bg-gradient-to-br from-purple-600 to-purple-800 p-3 rounded-xl shadow-lg shadow-purple-500/30">
+                  <Target className="w-8 h-8 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-2xl font-bold">{totalDeals} / 60 Deals</h2>
+                  <p className="text-gray-400 text-sm">Team Goal Progress</p>
+                </div>
               </div>
-              <div>
-                <h2 className="text-2xl font-bold">{totalDeals} / 60 Deals</h2>
-                <p className="text-gray-400 text-sm">Team Goal Progress</p>
+              <div className="h-12 w-px bg-gray-700" />
+              <div className="flex items-center gap-3">
+                <div className="bg-gradient-to-br from-purple-600 to-purple-800 p-3 rounded-xl shadow-lg shadow-purple-500/30">
+                  <TrendingUp className="w-8 h-8 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-2xl font-bold">€{totalDealValue.toLocaleString('nl-NL', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</h2>
+                  <p className="text-gray-400 text-sm">Total Deal Value</p>
+                </div>
               </div>
             </div>
             {isAdmin && (
@@ -591,6 +612,7 @@ const CSOlympicsDashboard = () => {
                   <th className="pb-3 px-3 text-gray-400 font-semibold">CSM</th>
                   <th className="pb-3 px-3 text-gray-400 font-semibold">Customer</th>
                   <th className="pb-3 px-3 text-gray-400 font-semibold">Notes</th>
+                  <th className="pb-3 px-3 text-gray-400 font-semibold">Deal Value</th>
                   <th className="pb-3 px-3 text-gray-400 font-semibold">Type</th>
                   <th className="pb-3 px-3 text-gray-400 font-semibold">Medal</th>
                   {isAdmin && <th className="pb-3 px-3"></th>}
@@ -620,6 +642,9 @@ const CSOlympicsDashboard = () => {
                       </td>
                       <td className="py-3 px-3">{deal.customer}</td>
                       <td className="py-3 px-3 text-sm text-gray-400">{deal.notes || "-"}</td>
+                      <td className="py-3 px-3 text-sm text-gray-300">
+                        {deal.dealValue ? `€${deal.dealValue.toLocaleString('nl-NL', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "-"}
+                      </td>
                       <td className="py-3 px-3 text-sm text-gray-300">
                         {deal.type}
                       </td>
@@ -660,7 +685,7 @@ const CSOlympicsDashboard = () => {
                   ))}
                 {deals.length === 0 && (
                   <tr>
-                    <td colSpan={isAdmin ? 7 : 6} className="py-12 text-center">
+                    <td colSpan={isAdmin ? 8 : 7} className="py-12 text-center">
                       <div className="w-16 h-16 mx-auto mb-4 opacity-30">
                         <RocketLogo />
                       </div>
@@ -758,6 +783,25 @@ const CSOlympicsDashboard = () => {
                   className="w-full bg-gray-700 border border-gray-600 rounded-xl px-4 py-2.5 text-white focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all"
                   placeholder="Enter notes"
                 />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold mb-2 text-gray-300">
+                  Deal Value (optional)
+                </label>
+                <div className="relative">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">€</span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={newDeal.dealValue}
+                    onChange={(e) =>
+                      setNewDeal({ ...newDeal, dealValue: e.target.value })
+                    }
+                    className="w-full bg-gray-700 border border-gray-600 rounded-xl pl-8 pr-4 py-2.5 text-white focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all"
+                    placeholder="0.00"
+                  />
+                </div>
               </div>
               <div>
                 <label className="block text-sm font-semibold mb-2 text-gray-300">
@@ -897,6 +941,25 @@ const CSOlympicsDashboard = () => {
                   className="w-full bg-gray-700 border border-gray-600 rounded-xl px-4 py-2.5 text-white focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all"
                   placeholder="Enter notes"
                 />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold mb-2 text-gray-300">
+                  Deal Value (optional)
+                </label>
+                <div className="relative">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">€</span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={dealToEdit.dealValue || ""}
+                    onChange={(e) =>
+                      setDealToEdit({ ...dealToEdit, dealValue: e.target.value ? parseFloat(e.target.value) : undefined })
+                    }
+                    className="w-full bg-gray-700 border border-gray-600 rounded-xl pl-8 pr-4 py-2.5 text-white focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all"
+                    placeholder="0.00"
+                  />
+                </div>
               </div>
               <div>
                 <label className="block text-sm font-semibold mb-2 text-gray-300">
