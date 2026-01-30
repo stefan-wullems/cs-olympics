@@ -594,7 +594,7 @@ const CSOlympicsDashboard = () => {
         <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl p-6 border border-purple-500/20 shadow-2xl shadow-purple-500/10">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-2xl font-bold flex items-center gap-2">
-              <TrendingUp className="w-6 h-6 text-purple-400" /> Recent Deals
+              <TrendingUp className="w-6 h-6 text-purple-400" /> All Deals
             </h2>
             <button
               onClick={handleExport}
@@ -604,9 +604,9 @@ const CSOlympicsDashboard = () => {
               <Download className="w-4 h-4" /> Export CSV
             </button>
           </div>
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto max-h-96 overflow-y-auto">
             <table className="w-full">
-              <thead>
+              <thead className="sticky top-0 bg-gray-800">
                 <tr className="text-left border-b border-gray-700">
                   <th className="pb-3 px-3 text-gray-400 font-semibold">Date</th>
                   <th className="pb-3 px-3 text-gray-400 font-semibold">CSM</th>
@@ -621,7 +621,6 @@ const CSOlympicsDashboard = () => {
               <tbody>
                 {[...deals]
                   .reverse()
-                  .slice(0, 10)
                   .map((deal) => (
                     <tr
                       key={deal.id}
